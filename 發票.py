@@ -1,4 +1,5 @@
 # about webdriver
+import json
 import chromedriver_autoinstaller
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
@@ -8,25 +9,16 @@ from selenium.webdriver.chrome.webdriver import WebDriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-
 # about qt
 import sys
-from PyQt5.QtCore import Qt, QDateTime, QDate, QTime
+from PyQt5.QtCore import Qt, QDate
 from PyQt5.QtWidgets import QDateEdit, QApplication, QWidget, QLabel, QLineEdit, QPushButton, QGridLayout, QHBoxLayout, QVBoxLayout, QComboBox, QMessageBox
 from PyQt5.QtGui import QFont
 
 # others
 from time import sleep
-from os import getenv
 from datetime import datetime as dt
 from functools import partial
-
-# BUYERID = '42524612'
-# ITEMID = 'A000001'
-# ITEMNAME = '商品名稱'
-# ITEMQTY = '1'
-# ITEMPRICE = '100'
-
 
 class Element():
     def __init__(self):
@@ -184,7 +176,8 @@ class Element():
 
 
 class Crawler():
-    def __init__(self, element: Element):
+    def __init__(self, data: dict, element: Element):
+        self.data = data
         self.element = element
 
     def run(self):
@@ -196,9 +189,9 @@ class Login(Crawler):
         self.element.get(self.element.mainURL)
         self.element.btn_login.click()
         self.element.select_Identity.select_by_visible_text('營業人')
-        self.element.input_GUINumber.send_keys(getenv('GUINumber'))
-        self.element.input_Account.send_keys(getenv('Account'))
-        self.element.input_Password.send_keys(getenv('Password'))
+        self.element.input_GUINumber.send_keys(self.data['GUINumber'])
+        self.element.input_Account.send_keys(self.data['Account'])
+        self.element.input_Password.send_keys(self.data['Password'])
         self.element.input_CheckCode.click()
         sleep(1)
         
@@ -290,7 +283,7 @@ class SendReceipt(Crawler):
         self.element.button_SelectAll.click()
         self.element.button_ToSendPage.click()
         self.element.alert.accept()
-        self.element.input_ReceiptSendPassword.send_keys(getenv('Account'))
+        self.element.input_ReceiptSendPassword.send_keys(self.data['Account'])
         self.element.checkbox_ReceiptSendAgree.click()
         # self.element.button_ReceiptSend
         self.element.button_ReceiptSend.click()
@@ -298,24 +291,18 @@ class SendReceipt(Crawler):
         self.element.minimize()
 
 class View():
-    def __init__(self):
+    def __init__(self, data):
         self.app = QApplication(sys.argv)
         self.widget = QWidget()
         # set always on top
         self.widget.setWindowFlags(Qt.WindowStaysOnTopHint)
 
-        # BUYERID = '42524612'
-        # ITEMID = 'A000001'
-        # ITEMNAME = '商品名稱'
-        # ITEMQTY = '1'
-        # ITEMPRICE = '100'
-
         self.defaultdata = {
-            'BuyerId': getenv('DefaultBuyerId'),
-            'ItemId': getenv('DefaultItemId'),
-            'ItemName': getenv('DefaultItemName'),
-            'ItemQty': getenv('DefaultItemQty'),
-            'ItemPrice': getenv('DefaultItemPrice')
+            'BuyerId': data['Default']['BuyerId'],
+            'ItemId': data['Default']['ItemId'],
+            'ItemName': data['Default']['ItemName'],
+            'ItemQty': data['Default']['ItemQty'],
+            'ItemPrice': data['Default']['ItemPrice']
         }
         self.set_window()
 
@@ -425,13 +412,20 @@ class View():
 
 class Main():
     def __init__(self):
+
+        # read data.json, and parse it to dict
+        with open('data.json', 'r', encoding='utf-8') as f:
+            self.data = json.load(f)
+
+        # create all crawlers
         element = Element()
-        self.login = Login(element)
+        self.login = Login(self.data, element)
 
-        self.savereceipt = SaveReceipt(element)
-        self.sendreceipt = SendReceipt(element)
+        self.savereceipt = SaveReceipt(self.data, element)
+        self.sendreceipt = SendReceipt(self.data, element)
 
-        view = View()
+        # create window
+        view = View(self.data)
         view.button_Send.clicked.connect(partial(self.executeCrawler, 
             view.label_GUINumber_Value, 
             view.label_ItemId_Value, 

@@ -131,3 +131,4 @@ dmypy.json
 # Develop
 *.note
 .vscode/
+*.json
