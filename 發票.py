@@ -8,20 +8,23 @@ from selenium.webdriver.chrome.webdriver import WebDriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+
 # about qt
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QGridLayout, QHBoxLayout, QVBoxLayout, QComboBox, QMessageBox
 
 # others
 from time import sleep
 from os import getenv
 from datetime import datetime as dt
+from functools import partial
 
-BUYERID = '42524612'
-ITEMID = 'A000001'
-ITEMNAME = '商品名稱'
-ITEMQTY = '1'
-ITEMPRICE = '100'
+# BUYERID = '42524612'
+# ITEMID = 'A000001'
+# ITEMNAME = '商品名稱'
+# ITEMQTY = '1'
+# ITEMPRICE = '100'
 
 
 class Element():
@@ -32,12 +35,17 @@ class Element():
     def init(self):
         if self.driver is None:
             self.driver = webdriver.Chrome()
-            self.driver.maximize_window()
+        self.maximize()
 
     mainURL = r'https://www.einvoice.nat.gov.tw/'
 
     def get(self, url):
         self.driver.get(url)
+    
+    def minimize(self):
+        self.driver.minimize_window()
+    def maximize(self):
+        self.driver.maximize_window()
 
     def find_element(self, by, value, timeout=10):
         WebDriverWait(self.driver, timeout).until(
@@ -208,12 +216,20 @@ class Login(Crawler):
                 continue
 
         self.element.url = r'/'.join(self.element.current_url.split(r'/')[:-1])
+        self.element.minimize()
         
 
 class SaveReceipt(Crawler):
-    def run(self):
+    def run(self, buyerId: QLineEdit, itemId: QLineEdit, itemName: QLineEdit, itemQty: QLineEdit, itemPrice: QLineEdit):
         super().run()
-        self.element.get(self.element.url + '/MultiDelivery/invSave/InvSaveCreate!insert')
+
+        buyerId = buyerId.text()
+        itemId = itemId.text()
+        itemName = itemName.text()
+        itemQty = itemQty.text()
+        itemPrice = itemPrice.text()
+
+        self.element.get(self.element.url + '/MultiDelivery/invSave/InvSaveCreate!insert#')
         
         self.element.button_Date.click()
         self.element.button_Date_Today.click()
@@ -232,18 +248,19 @@ class SaveReceipt(Crawler):
 
         # 選擇買受人
         self.element.button_BuyerId.click()
-        self.element.input_SearchBuyerId.send_keys(BUYERID)
+        self.element.input_SearchBuyerId.send_keys(buyerId)
         sleep(.5)
-        self.element.button_CandidateBuyerId(BUYERID).click()
+        self.element.button_CandidateBuyerId(buyerId).click()
 
         # 輸入商品資訊
-        self.element.input_ItemId.send_keys(ITEMID)
-        self.element.input_ItemName.send_keys(ITEMNAME)
-        self.element.input_ItemQty.send_keys(ITEMQTY)
-        self.element.input_ItemPrice.send_keys(ITEMPRICE, Keys.TAB)
+        self.element.input_ItemId.send_keys(itemId)
+        self.element.input_ItemName.send_keys(itemName)
+        self.element.input_ItemQty.send_keys(itemQty)
+        self.element.input_ItemPrice.send_keys(itemPrice, Keys.TAB)
 
+        origin_url = self.element.current_url
         # 等待確認
-        while self.element.current_url != self.element.url + '/MultiDelivery/invSave/InvSaveCreate!insert':
+        while self.element.current_url == origin_url:
             sleep(.2)
 
         sleep(1)
@@ -259,6 +276,11 @@ class SendReceipt(Crawler):
         self.element.button_Date_Today.click()
         self.element.button_SearchReceipt.click()
         self.element.button_ReceiptTitle.click()
+        try:
+            self.element.alert.accept()
+        except:
+            pass
+        
         self.element.button_SelectAll.click()
         self.element.button_ToSendPage.click()
         self.element.alert.accept()
@@ -267,34 +289,127 @@ class SendReceipt(Crawler):
         # self.element.button_ReceiptSend
         self.element.button_ReceiptSend.click()
 
-        sleep(1000)
-
 class View():
     def __init__(self):
         self.app = QApplication(sys.argv)
         self.widget = QWidget()
+        # BUYERID = '42524612'
+        # ITEMID = 'A000001'
+        # ITEMNAME = '商品名稱'
+        # ITEMQTY = '1'
+        # ITEMPRICE = '100'
+
+        self.defaultdata = {
+            'BuyerId': getenv('DefaultBuyerId'),
+            'ItemId': getenv('DefaultItemId'),
+            'ItemName': getenv('DefaultItemName'),
+            'ItemQty': getenv('DefaultItemQty'),
+            'ItemPrice': getenv('DefaultItemPrice')
+        }
+        self.set_window()
+
+    def set_window(self):
+        # title
+        self.widget.setWindowTitle('電子發票寄送')
+
+        # grid 6 row * 2 column
+        ''' the layout is like:
+        統一編號, '42524612'
+        物品ID, 'A000001'
+        名稱 = '商品名稱'
+        數量 = '1'
+        價格 = '100'
+        Send Button(column span 2 row span 1)
+        '''
+        grid = QGridLayout()
+        grid.setSpacing(10)
+        self.widget.setLayout(grid)
+
+        # 統一編號
+        self.label_GUINumber = QLabel('統一編號')
+        self.label_GUINumber.setAlignment(Qt.AlignCenter)
+        grid.addWidget(self.label_GUINumber, 0, 0)
+
+        self.label_GUINumber_Value = QLineEdit(self.defaultdata['BuyerId'])
+        self.label_GUINumber_Value.setAlignment(Qt.AlignCenter)
+        grid.addWidget(self.label_GUINumber_Value, 0, 1)
+
+        # 物品ID
+        self.label_ItemId = QLabel('物品ID')
+        self.label_ItemId.setAlignment(Qt.AlignCenter)
+        grid.addWidget(self.label_ItemId, 1, 0)
+        
+        self.label_ItemId_Value = QLineEdit(self.defaultdata['ItemId'])
+        self.label_ItemId_Value.setAlignment(Qt.AlignCenter)
+        grid.addWidget(self.label_ItemId_Value, 1, 1)
+
+        # 名稱
+        self.label_ItemName = QLabel('名稱')
+        self.label_ItemName.setAlignment(Qt.AlignCenter)
+        grid.addWidget(self.label_ItemName, 2, 0)
+
+        self.label_ItemName_Value = QLineEdit(self.defaultdata['ItemName'])
+        self.label_ItemName_Value.setAlignment(Qt.AlignCenter)
+        grid.addWidget(self.label_ItemName_Value, 2, 1)
+
+        # 數量
+        self.label_ItemQty = QLabel('數量')
+        self.label_ItemQty.setAlignment(Qt.AlignCenter)
+        grid.addWidget(self.label_ItemQty, 3, 0)
+
+        self.label_ItemQty_Value = QLineEdit(self.defaultdata['ItemQty'])
+        self.label_ItemQty_Value.setAlignment(Qt.AlignCenter)
+        grid.addWidget(self.label_ItemQty_Value, 3, 1)
+
+        # 價格
+        self.label_ItemPrice = QLabel('價格')
+        self.label_ItemPrice.setAlignment(Qt.AlignCenter)
+        grid.addWidget(self.label_ItemPrice, 4, 0)
+
+        self.label_ItemPrice_Value = QLineEdit(self.defaultdata['ItemPrice'])
+        self.label_ItemPrice_Value.setAlignment(Qt.AlignCenter)
+        grid.addWidget(self.label_ItemPrice_Value, 4, 1)
+
+        # Send Button
+        self.button_Send = QPushButton('Send')
+        grid.addWidget(self.button_Send, 5, 0, 1, 2)
+
 
     def show(self):
-        
-        textLabel = QLabel(self.widget)
-        textLabel.setText("Hello World!")
-        textLabel.move(110,85)
-
-        self.widget.setGeometry(50,50,320,200)
-        self.widget.setWindowTitle("PyQt5 Example")
+        # show window
         self.widget.show()
+
+        # 還原視窗
+        self.widget.showNormal()
+        
+
         sys.exit(self.app.exec_())
 
 class Main():
     def __init__(self):
         element = Element()
-        login = Login(element)
-        savereceipt = SaveReceipt(element)
-        #sendreceipt = SendReceipt(element).run()
+        self.login = Login(element)
+
+        self.savereceipt = SaveReceipt(element)
+        self.sendreceipt = SendReceipt(element)
 
         view = View()
-        view.show()
+        view.button_Send.clicked.connect(partial(self.executeCrawler, 
+            view.label_GUINumber_Value, 
+            view.label_ItemId_Value, 
+            view.label_ItemName_Value, 
+            view.label_ItemQty_Value, 
+            view.label_ItemPrice_Value
+        ))
         
+        # processing...
+        self.login.run()
+        view.show()
+
+    def executeCrawler(self, GUINumber, ItemId, ItemName, ItemQty, ItemPrice):
+           self.savereceipt.run(GUINumber, ItemId, ItemName, ItemQty, ItemPrice)
+           self.sendreceipt.run()
+
 
 
 if __name__ == '__main__':
