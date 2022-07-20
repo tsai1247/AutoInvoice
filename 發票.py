@@ -427,7 +427,7 @@ class Main():
         # create window
         self.view = View(self.data)
         self.view.button_Send.clicked.connect(partial(self.executeCrawler, 
-            self.view.date.date().toString('dd'),
+            self.view.date,
             self.view.label_GUINumber_Value, 
             self.view.label_ItemId_Value, 
             self.view.label_ItemName_Value, 
@@ -440,6 +440,7 @@ class Main():
         self.view.show()
 
     def executeCrawler(self, date, GUINumber, ItemId, ItemName, ItemQty, ItemPrice):
+        date = date.date().toString('dd')
         self.view.widget.showMinimized()
         self.savereceipt.run(date, GUINumber, ItemId, ItemName, ItemQty, ItemPrice)
         self.sendreceipt.run(date)
