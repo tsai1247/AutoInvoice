@@ -12,7 +12,7 @@ from selenium.webdriver.support import expected_conditions as EC
 # about qt
 import sys
 from PyQt5.QtCore import Qt, QDate
-from PyQt5.QtWidgets import QDateEdit, QApplication, QWidget, QLabel, QLineEdit, QPushButton, QGridLayout, QHBoxLayout, QVBoxLayout, QComboBox, QMessageBox
+from PyQt5.QtWidgets import QDateEdit, QApplication, QWidget, QLabel, QLineEdit, QPushButton, QGridLayout
 from PyQt5.QtGui import QFont
 
 # others
@@ -414,7 +414,7 @@ class Main():
     def __init__(self):
 
         # read data.json, and parse it to dict
-        with open('data.json', 'r', encoding='utf-8') as f:
+        with open('data.json', 'r', encoding='utf_8_sig') as f:
             self.data = json.load(f)
 
         # create all crawlers
