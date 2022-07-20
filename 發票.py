@@ -100,7 +100,7 @@ class Element():
         today = dt.now().strftime('%d')
         return self.find_element(By.XPATH, f'//a[contains(@class, "ui-state-default")][contains(text(), "{today}")]')
 
-    def button_Date(self, date: int):
+    def button_Date(self, date):
         return self.find_element(By.XPATH, f'//a[contains(@class, "ui-state-default")][contains(text(), "{date}")]')
 
 
@@ -219,7 +219,7 @@ class Login(Crawler):
         
 
 class SaveReceipt(Crawler):
-    def run(self, date: int, buyerId: QLineEdit, itemId: QLineEdit, itemName: QLineEdit, itemQty: QLineEdit, itemPrice: QLineEdit):
+    def run(self, date, buyerId: QLineEdit, itemId: QLineEdit, itemName: QLineEdit, itemQty: QLineEdit, itemPrice: QLineEdit):
         super().run()
 
         buyerId = buyerId.text()
@@ -427,6 +427,7 @@ class Main():
         # create window
         view = View(self.data)
         view.button_Send.clicked.connect(partial(self.executeCrawler, 
+            view.date.date().toString('dd'),
             view.label_GUINumber_Value, 
             view.label_ItemId_Value, 
             view.label_ItemName_Value, 
