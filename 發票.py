@@ -11,8 +11,9 @@ from selenium.webdriver.support import expected_conditions as EC
 
 # about qt
 import sys
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QGridLayout, QHBoxLayout, QVBoxLayout, QComboBox, QMessageBox
+from PyQt5.QtCore import Qt, QDateTime, QDate, QTime
+from PyQt5.QtWidgets import QDateEdit, QApplication, QWidget, QLabel, QLineEdit, QPushButton, QGridLayout, QHBoxLayout, QVBoxLayout, QComboBox, QMessageBox
+from PyQt5.QtGui import QFont
 
 # others
 from time import sleep
@@ -95,7 +96,7 @@ class Element():
         return self.find_element(By.XPATH, '//*[@id="button"]')
 
     @property
-    def button_Date(self):
+    def button_DateChooser(self):
         ret = self.find_elements(By.CSS_SELECTOR, 'img.ui-datepicker-trigger')
         if len(ret) == 1:
             return ret[0]
@@ -106,6 +107,11 @@ class Element():
     def button_Date_Today(self):
         today = dt.now().strftime('%d')
         return self.find_element(By.XPATH, f'//a[contains(@class, "ui-state-default")][contains(text(), "{today}")]')
+
+    def button_Date(self, date: int):
+        return self.find_element(By.XPATH, f'//a[contains(@class, "ui-state-default")][contains(text(), "{date}")]')
+
+
     @property
     def button_ChooseReceiptHead(self):
         return self.find_element(By.XPATH, '//input[@id="invNoPrefix"]/../input[@type="button"]')
@@ -220,7 +226,7 @@ class Login(Crawler):
         
 
 class SaveReceipt(Crawler):
-    def run(self, buyerId: QLineEdit, itemId: QLineEdit, itemName: QLineEdit, itemQty: QLineEdit, itemPrice: QLineEdit):
+    def run(self, date: int, buyerId: QLineEdit, itemId: QLineEdit, itemName: QLineEdit, itemQty: QLineEdit, itemPrice: QLineEdit):
         super().run()
 
         buyerId = buyerId.text()
@@ -231,8 +237,8 @@ class SaveReceipt(Crawler):
 
         self.element.get(self.element.url + '/MultiDelivery/invSave/InvSaveCreate!insert#')
         
-        self.element.button_Date.click()
-        self.element.button_Date_Today.click()
+        self.element.button_DateChooser.click()
+        self.element.button_Date(date).click()
 
         # 選擇發票號碼
         self.element.button_ChooseReceiptHead.click()
@@ -266,14 +272,14 @@ class SaveReceipt(Crawler):
         sleep(1)
 
 class SendReceipt(Crawler):
-    def run(self):
+    def run(self, date):
         super().run()
         self.element.get(self.element.url + '/MultiDelivery/SelfDelivery')
-        self.element.button_Date[0].click()
-        self.element.button_Date_Today.click()
+        self.element.button_DateChooser[0].click()
+        self.element.button_Date(date).click()
         
-        self.element.button_Date[1].click()
-        self.element.button_Date_Today.click()
+        self.element.button_DateChooser[1].click()
+        self.element.button_Date(date).click()
         self.element.button_SearchReceipt.click()
         self.element.button_ReceiptTitle.click()
         try:
@@ -289,10 +295,15 @@ class SendReceipt(Crawler):
         # self.element.button_ReceiptSend
         self.element.button_ReceiptSend.click()
 
+        self.element.minimize()
+
 class View():
     def __init__(self):
         self.app = QApplication(sys.argv)
         self.widget = QWidget()
+        # set always on top
+        self.widget.setWindowFlags(Qt.WindowStaysOnTopHint)
+
         # BUYERID = '42524612'
         # ITEMID = 'A000001'
         # ITEMNAME = '商品名稱'
@@ -312,67 +323,94 @@ class View():
         # title
         self.widget.setWindowTitle('電子發票寄送')
 
-        # grid 6 row * 2 column
+        # grid 7 row * 2 column
         ''' the layout is like:
+        日期, 2022/02/02
         統一編號, '42524612'
-        物品ID, 'A000001'
+        商品ID, 'A000001'
         名稱 = '商品名稱'
         數量 = '1'
         價格 = '100'
         Send Button(column span 2 row span 1)
         '''
+        # all fontsize is 14
+        font = QFont('微軟正黑體', 14)
+
         grid = QGridLayout()
         grid.setSpacing(10)
         self.widget.setLayout(grid)
 
+        # date chooser
+        self.label_DateChooser = QLabel('日期')
+        self.label_DateChooser.setAlignment(Qt.AlignCenter)
+        self.label_DateChooser.setFont(font)
+        grid.addWidget(self.label_DateChooser, 0, 0)
+
+        self.date = QDateEdit()
+        self.date.setDate(QDate.currentDate())
+        self.date.setCalendarPopup(True)
+        self.date.setDisplayFormat('yyyy/MM/dd')
+        self.date.setMinimumDate(QDate.currentDate().addDays(-QDate.currentDate().day() + 1))
+        self.date.setMaximumDate(QDate.currentDate().addDays(3))
+        self.date.setDate(QDate.currentDate())
+        self.date.setFont(font)
+        grid.addWidget(self.date, 0, 1)
+
         # 統一編號
         self.label_GUINumber = QLabel('統一編號')
         self.label_GUINumber.setAlignment(Qt.AlignCenter)
-        grid.addWidget(self.label_GUINumber, 0, 0)
+        self.label_GUINumber.setFont(font)
+        grid.addWidget(self.label_GUINumber, 1, 0)
+
 
         self.label_GUINumber_Value = QLineEdit(self.defaultdata['BuyerId'])
-        self.label_GUINumber_Value.setAlignment(Qt.AlignCenter)
-        grid.addWidget(self.label_GUINumber_Value, 0, 1)
+        self.label_GUINumber_Value.setFont(font)
+        grid.addWidget(self.label_GUINumber_Value, 1, 1)
 
         # 物品ID
-        self.label_ItemId = QLabel('物品ID')
+        self.label_ItemId = QLabel('商品ID')
         self.label_ItemId.setAlignment(Qt.AlignCenter)
-        grid.addWidget(self.label_ItemId, 1, 0)
+        self.label_ItemId.setFont(font)
+        grid.addWidget(self.label_ItemId, 2, 0)
         
         self.label_ItemId_Value = QLineEdit(self.defaultdata['ItemId'])
-        self.label_ItemId_Value.setAlignment(Qt.AlignCenter)
-        grid.addWidget(self.label_ItemId_Value, 1, 1)
+        self.label_ItemId_Value.setFont(font)
+        grid.addWidget(self.label_ItemId_Value, 2, 1)
 
         # 名稱
         self.label_ItemName = QLabel('名稱')
         self.label_ItemName.setAlignment(Qt.AlignCenter)
-        grid.addWidget(self.label_ItemName, 2, 0)
+        self.label_ItemName.setFont(font)
+        grid.addWidget(self.label_ItemName, 3, 0)
 
         self.label_ItemName_Value = QLineEdit(self.defaultdata['ItemName'])
-        self.label_ItemName_Value.setAlignment(Qt.AlignCenter)
-        grid.addWidget(self.label_ItemName_Value, 2, 1)
+        self.label_ItemName_Value.setFont(font)
+        grid.addWidget(self.label_ItemName_Value, 3, 1)
 
         # 數量
         self.label_ItemQty = QLabel('數量')
         self.label_ItemQty.setAlignment(Qt.AlignCenter)
-        grid.addWidget(self.label_ItemQty, 3, 0)
+        self.label_ItemQty.setFont(font)
+        grid.addWidget(self.label_ItemQty, 4, 0)
 
         self.label_ItemQty_Value = QLineEdit(self.defaultdata['ItemQty'])
-        self.label_ItemQty_Value.setAlignment(Qt.AlignCenter)
-        grid.addWidget(self.label_ItemQty_Value, 3, 1)
+        self.label_ItemQty_Value.setFont(font)
+        grid.addWidget(self.label_ItemQty_Value, 4, 1)
 
         # 價格
         self.label_ItemPrice = QLabel('價格')
         self.label_ItemPrice.setAlignment(Qt.AlignCenter)
-        grid.addWidget(self.label_ItemPrice, 4, 0)
+        self.label_ItemPrice.setFont(font)
+        grid.addWidget(self.label_ItemPrice, 5, 0)
 
         self.label_ItemPrice_Value = QLineEdit(self.defaultdata['ItemPrice'])
-        self.label_ItemPrice_Value.setAlignment(Qt.AlignCenter)
-        grid.addWidget(self.label_ItemPrice_Value, 4, 1)
+        self.label_ItemPrice_Value.setFont(font)
+        grid.addWidget(self.label_ItemPrice_Value, 5, 1)
 
         # Send Button
         self.button_Send = QPushButton('Send')
-        grid.addWidget(self.button_Send, 5, 0, 1, 2)
+        self.button_Send.setFont(font)
+        grid.addWidget(self.button_Send, 6, 0, 1, 2)
 
 
     def show(self):
@@ -406,9 +444,9 @@ class Main():
         self.login.run()
         view.show()
 
-    def executeCrawler(self, GUINumber, ItemId, ItemName, ItemQty, ItemPrice):
-           self.savereceipt.run(GUINumber, ItemId, ItemName, ItemQty, ItemPrice)
-           self.sendreceipt.run()
+    def executeCrawler(self, date, GUINumber, ItemId, ItemName, ItemQty, ItemPrice):
+           self.savereceipt.run(date, GUINumber, ItemId, ItemName, ItemQty, ItemPrice)
+           self.sendreceipt.run(date)
 
 
 
