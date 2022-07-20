@@ -425,23 +425,25 @@ class Main():
         self.sendreceipt = SendReceipt(self.data, element)
 
         # create window
-        view = View(self.data)
-        view.button_Send.clicked.connect(partial(self.executeCrawler, 
-            view.date.date().toString('dd'),
-            view.label_GUINumber_Value, 
-            view.label_ItemId_Value, 
-            view.label_ItemName_Value, 
-            view.label_ItemQty_Value, 
-            view.label_ItemPrice_Value
+        self.view = View(self.data)
+        self.view.button_Send.clicked.connect(partial(self.executeCrawler, 
+            self.view.date.date().toString('dd'),
+            self.view.label_GUINumber_Value, 
+            self.view.label_ItemId_Value, 
+            self.view.label_ItemName_Value, 
+            self.view.label_ItemQty_Value, 
+            self.view.label_ItemPrice_Value
         ))
         
         # processing...
         self.login.run()
-        view.show()
+        self.view.show()
 
     def executeCrawler(self, date, GUINumber, ItemId, ItemName, ItemQty, ItemPrice):
-           self.savereceipt.run(date, GUINumber, ItemId, ItemName, ItemQty, ItemPrice)
-           self.sendreceipt.run(date)
+        self.view.widget.showMinimized()
+        self.savereceipt.run(date, GUINumber, ItemId, ItemName, ItemQty, ItemPrice)
+        self.sendreceipt.run(date)
+        self.view.widget.showNormal()
 
 
 
