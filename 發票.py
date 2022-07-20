@@ -285,10 +285,7 @@ class SendReceipt(Crawler):
         self.element.alert.accept()
         self.element.input_ReceiptSendPassword.send_keys(self.data['Account'])
         self.element.checkbox_ReceiptSendAgree.click()
-        # self.element.button_ReceiptSend
-        self.element.button_ReceiptSend.click()
-
-        self.element.minimize()
+        
 
 class View():
     def __init__(self, data):
